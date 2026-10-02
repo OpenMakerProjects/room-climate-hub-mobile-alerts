@@ -1,0 +1,21 @@
+{
+  "id": 2,
+  "title": "Room Climate Hub Mobile Alerts",
+  "repository_slug": "room-climate-hub-mobile-alerts",
+  "category": "Smart Home",
+  "platform": "Arduino Nano 33 IoT",
+  "platform_family": "arduino",
+  "difficulty": "Intermediate",
+  "estimated_hours": 24,
+  "connectivity": "MQTT",
+  "components": [
+    "BME280",
+    "OLED display",
+    "RGB LED"
+  ],
+  "scope": "Build a smart home prototype that uses BME280, OLED display, RGB LED to send timely mobile notifications. Include setup instructions, a circuit diagram, tested firmware, and sample output.",
+  "key_deliverable": "Mobile Alerts demonstration with repeatable test steps",
+  "mode": "threshold_alert",
+  "entrypoint": "firmware/room-climate-hub-mobile-alerts/room-climate-hub-mobile-alerts.ino",
+  "roadmap_source": "openmaker-2100-project-roadmap.xlsx"
+}
