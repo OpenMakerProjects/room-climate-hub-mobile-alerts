@@ -1,22 +1,3 @@
-# Test plan
+# Repeatable tests
 
-## Static checks
-
-1. Run `python tools/validate.py`.
-2. Confirm the firmware or application starts without missing configuration.
-3. Compare the assembled wiring with `docs/wiring.md` and component datasheets.
-
-## Functional checks
-
-1. Start with simulated or disconnected actuators.
-2. Feed low, nominal, and high readings into the controller.
-3. Confirm the **threshold alert** behavior matches the serial or console output.
-4. Disconnect one sensor and confirm the system enters a safe state.
-5. Restore the sensor and verify recovery requires an intentional acknowledgement for latched safety modes.
-
-## Acceptance criteria
-
-- Telemetry includes a timestamp, state, input readings, and output state.
-- Invalid readings do not command an actuator on.
-- The output changes only after the configured threshold and debounce checks pass.
-- The steps in the README reproduce the demonstration.
+Run the README host and board commands. Policy tests cover three-sample confirmation, hysteresis, invalid readings, and reset of consecutive counts. Bridge tests mock external delivery and cover cooldown, recovery, bad telemetry, failure retries and destination validation. PNG tests prove rejection of corrupt/noncanonical transport. After assembling actual hardware, independently test addresses, 3.3V signals, displayed values, fault indication, MQTT disconnect/reconnect and phone delivery. Those physical tests have not been performed by automation.
