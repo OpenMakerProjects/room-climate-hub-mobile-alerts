@@ -1,107 +1,41 @@
 #include <Arduino.h>
-
-#ifndef LED_BUILTIN
-#define LED_BUILTIN 2
-#endif
-
-// Room Climate Hub Mobile Alerts
-// Roadmap project 2; mode: threshold_alert
-constexpr uint8_t SENSOR_PINS[] = {A0, A1, A2};
-constexpr size_t SENSOR_COUNT = sizeof(SENSOR_PINS) / sizeof(SENSOR_PINS[0]);
-constexpr uint8_t OUTPUT_PIN = LED_BUILTIN;
-constexpr unsigned long SAMPLE_INTERVAL_MS = 1250UL;
-constexpr float TRIGGER_THRESHOLD = 0.47f;
-constexpr uint8_t REQUIRED_CONFIRMATIONS = 4;
-
-enum class SystemState : uint8_t { Starting, Normal, Active, Fault };
-
-struct Snapshot {
-  float values[SENSOR_COUNT];
-  float score;
-  bool valid;
-};
-
-SystemState state = SystemState::Starting;
-unsigned long lastSampleAt = 0;
-uint8_t confirmations = 0;
-bool outputActive = false;
-
-float normalizeReading(int raw) {
-  return constrain(raw / 1023.0f, 0.0f, 1.0f);
+#include <Wire.h>
+#include <WiFiNINA.h>
+#include <PubSubClient.h>
+#include <Adafruit_BME280.h>
+#include <Adafruit_SSD1306.h>
+#include "config.h"
+#include "alert_policy.h"
+Adafruit_BME280 bme;
+Adafruit_SSD1306 oled(128,64,&Wire,-1);
+WiFiClient network; PubSubClient mqtt(network); AlertPolicy policy;
+bool sensorReady=false, displayReady=false;
+unsigned long sampled=0,retryAt=0; uint32_t sequence=0;
+void color(bool r,bool g,bool b){digitalWrite(LED_R,r);digitalWrite(LED_G,g);digitalWrite(LED_B,b);}
+void setup(){
+  Serial.begin(115200); pinMode(LED_R,OUTPUT);pinMode(LED_G,OUTPUT);pinMode(LED_B,OUTPUT);color(0,0,1);
+  Wire.begin();sensorReady=bme.begin(BME_ADDRESS);displayReady=oled.begin(SSD1306_SWITCHCAPVCC,OLED_ADDRESS);
+  mqtt.setServer(MQTT_HOST,MQTT_PORT);mqtt.setBufferSize(512);mqtt.setSocketTimeout(2);
 }
-
-Snapshot acquireSnapshot() {
-  Snapshot snapshot{};
-  snapshot.valid = true;
-  float sum = 0.0f;
-  for (size_t index = 0; index < SENSOR_COUNT; ++index) {
-    const int raw = analogRead(SENSOR_PINS[index]);
-    if (raw < 0) snapshot.valid = false;
-    snapshot.values[index] = normalizeReading(raw);
-    sum += snapshot.values[index];
+void loop(){
+  unsigned long now=millis();
+  if (now-retryAt>=RETRY_MS) {
+    retryAt=now;
+    if(!sensorReady)sensorReady=bme.begin(BME_ADDRESS);
+    if(WIFI_SSID[0]&&MQTT_HOST[0]){
+      if(WiFi.status()!=WL_CONNECTED)WiFi.begin(WIFI_SSID,WIFI_PASSWORD);
+      else if(!mqtt.connected())mqtt.connect("omp-climate-002","openmaker/2/availability",0,true,"offline");
+      if(mqtt.connected())mqtt.publish("openmaker/2/availability","online",true);
+    }
   }
-  snapshot.score = sum / SENSOR_COUNT;
-  return snapshot;
-}
-
-bool decide(const Snapshot &snapshot) {
-  if (!snapshot.valid) return false;
-  const bool condition = snapshot.score >= TRIGGER_THRESHOLD;
-  if (!condition) {
-    confirmations = 0;
-  } else if (confirmations < REQUIRED_CONFIRMATIONS) {
-    confirmations += 1;
-  }
-  return confirmations >= REQUIRED_CONFIRMATIONS;
-}
-
-void applyOutput(bool requested, bool valid) {
-  if (!valid) {
-    outputActive = false;
-    state = SystemState::Fault;
-  } else {
-    outputActive = requested;
-    state = requested ? SystemState::Active : SystemState::Normal;
-  }
-  digitalWrite(OUTPUT_PIN, outputActive ? HIGH : LOW);
-}
-
-const char *stateName() {
-  switch (state) {
-    case SystemState::Starting: return "starting";
-    case SystemState::Normal: return "normal";
-    case SystemState::Active: return "active";
-    default: return "fault";
-  }
-}
-
-void publishTelemetry(const Snapshot &snapshot) {
-  Serial.print(R"json({"project_id":2,"mode":"threshold_alert","state":")json");
-  Serial.print(stateName());
-  Serial.print(R"json(","score":)json");
-  Serial.print(snapshot.score, 3);
-  Serial.print(R"json(,"output":)json");
-  Serial.print(outputActive ? "true" : "false");
-  Serial.print(R"json(,"values":[)json");
-  for (size_t index = 0; index < SENSOR_COUNT; ++index) {
-    if (index) Serial.print(',');
-    Serial.print(snapshot.values[index], 3);
-  }
-  Serial.println("]}");
-}
-
-void setup() {
-  pinMode(OUTPUT_PIN, OUTPUT);
-  digitalWrite(OUTPUT_PIN, LOW);
-  Serial.begin(115200);
-  state = SystemState::Normal;
-}
-
-void loop() {
-  const unsigned long now = millis();
-  if (now - lastSampleAt < SAMPLE_INTERVAL_MS) return;
-  lastSampleAt = now;
-  const Snapshot snapshot = acquireSnapshot();
-  applyOutput(decide(snapshot), snapshot.valid);
-  publishTelemetry(snapshot);
+  mqtt.loop(); if(now-sampled<SAMPLE_MS)return;sampled=now;
+  float t=NAN,h=NAN,p=NAN;
+  if(sensorReady){t=bme.readTemperature();h=bme.readHumidity();p=bme.readPressure()/100.0f;}
+  bool valid=policy.update(t,h,p); if(!valid)sensorReady=false;
+  color(!valid||policy.active,valid&&!policy.active,!valid);
+  char payload[256];++sequence;
+  if(valid)snprintf(payload,sizeof payload,"{\"project_id\":2,\"seq\":%lu,\"uptime_ms\":%lu,\"valid\":true,\"temperature_c\":%.2f,\"humidity_pct\":%.2f,\"pressure_hpa\":%.2f,\"alert\":%s}",(unsigned long)sequence,now,t,h,p,policy.active?"true":"false");
+  else snprintf(payload,sizeof payload,"{\"project_id\":2,\"seq\":%lu,\"uptime_ms\":%lu,\"valid\":false,\"temperature_c\":null,\"humidity_pct\":null,\"pressure_hpa\":null,\"alert\":false}",(unsigned long)sequence,now);
+  Serial.println(payload);if(mqtt.connected())mqtt.publish("openmaker/2/telemetry",payload,false);
+  if(displayReady){oled.clearDisplay();oled.setTextSize(1);oled.setTextColor(SSD1306_WHITE);oled.setCursor(0,0);oled.println("Room Climate / ID 2");if(valid){oled.print(t);oled.println(" C");oled.print(h);oled.println(" % RH");oled.print(p);oled.println(" hPa");oled.println(policy.active?"HIGH TEMP ALERT":"Normal");}else oled.println("Sensor fault");oled.println(mqtt.connected()?"MQTT online":"MQTT offline");oled.display();}
 }

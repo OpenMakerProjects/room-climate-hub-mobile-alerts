@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="680" viewBox="0 0 1120 680" role="img" aria-labelledby="title desc">
+<title id="title">Nano 33 IoT climate alert circuit</title><desc id="desc">USB powered 3.3V Nano; BME280 0x76 and OLED 0x3C share A4 SDA and A5 SCL. BME CS high SDO low. RGB common cathode to ground, three 1kohm resistors from D3 D5 D6 to red green blue anodes.</desc>
+<rect width="1120" height="680" fill="white"/>
+<g font-family="sans-serif" font-size="16" fill="#123">
+<text x="30" y="30" font-size="22">Roadmap 2 — exact low-voltage circuit (no mains)</text>
+<rect x="40" y="110" width="240" height="420" fill="#eaf4f5" stroke="#123"/><text x="55" y="140">Arduino Nano 33 IoT</text><text x="55" y="172">USB power / 3.3 V logic</text>
+<text x="218" y="207">3V3</text><text x="214" y="247">GND</text><text x="184" y="297">A4/SDA</text><text x="184" y="347">A5/SCL</text><text x="226" y="407">D3</text><text x="226" y="457">D5</text><text x="226" y="507">D6</text>
+<rect x="500" y="150" width="220" height="220" fill="#f5f7ef" stroke="#123"/><text x="525" y="180">BME280 @ 0x76</text><text x="510" y="207">VCC</text><text x="510" y="247">GND</text><text x="510" y="297">SDA</text><text x="510" y="347">SCL</text><text x="660" y="207">CS</text><text x="660" y="247">SDO</text>
+<rect x="840" y="150" width="240" height="220" fill="#eef2f8" stroke="#123"/><text x="860" y="180">SSD1306 128×64</text><text x="860" y="195">I²C @ 0x3C</text><text x="850" y="217">VCC</text><text x="850" y="257">GND</text><text x="850" y="307">SDA</text><text x="850" y="357">SCL</text>
+<rect x="570" y="395" width="150" height="130" fill="#fff3e4" stroke="#123"/><text x="580" y="423">RGB LED</text><text x="580" y="446">R anode</text><text x="580" y="476">G anode</text><text x="580" y="506">B anode</text><text x="580" y="556">Common cathode</text>
+<text x="330" y="380">1 kΩ each</text><text x="35" y="610">All module power/pull-ups 3.3 V. Verify existing breakout pull-ups; no 5 V I²C.</text><text x="35" y="640">Wi-Fi → MQTT broker → bridge → ntfy server → phone (software path; no extra GPIO wires)</text>
+</g>
+<g fill="none" stroke-width="2.5">
+<path stroke="#b32" d="M280 200 H500 M370 200 V70 H790 V210 H840 M720 200 H750 V70"/>
+<path stroke="#333" d="M280 240 H500 M300 240 V580 H790 V250 H840 M720 240 H760 V580 M645 525 V580"/>
+<path stroke="#067" d="M280 290 H500 M390 290 V95 H810 V300 H840"/>
+<path stroke="#76a" d="M280 340 H500 M410 340 V120 H830 V350 H840"/>
+<path stroke="#b32" d="M280 400 H330 M400 400 H540 V440 H570"/><rect x="330" y="392" width="70" height="16" stroke="#b32"/>
+<path stroke="#086" d="M280 450 H330 M400 450 H520 V470 H570"/><rect x="330" y="442" width="70" height="16" stroke="#086"/>
+<path stroke="#36b" d="M280 500 H330 M400 500 H570"/><rect x="330" y="492" width="70" height="16" stroke="#36b"/>
+</g><g fill="#123"><circle cx="370" cy="200" r="4"/><circle cx="300" cy="240" r="4"/><circle cx="390" cy="290" r="4"/><circle cx="410" cy="340" r="4"/></g>
+</svg>
